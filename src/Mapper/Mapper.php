@@ -27,13 +27,13 @@ class Mapper extends DatabaseMapper
 
     private RelationMap $relationMap;
 
-    public function __construct(ORMInterface $orm, string $role)
+    public function __construct(ORMInterface $orm, ProxyEntityFactory $entityFactory, string $role)
     {
         parent::__construct($orm, $role);
 
         $this->entity = $orm->getSchema()->define($role, Schema::ENTITY);
         $this->children = $orm->getSchema()->define($role, Schema::CHILDREN) ?? [];
-        $this->entityFactory = new ProxyEntityFactory();
+        $this->entityFactory = $entityFactory;
         $this->relationMap = $orm->getRelationMap($role);
     }
 

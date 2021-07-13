@@ -9,7 +9,8 @@
     "doctrine/inflector": "^1.4|^2.0",
     "doctrine/collections": "^1.5",
     "doctrine/instantiator": "^1.2",
-    "laminas/laminas-hydrator": "^2.4|^3.0|^4.0",
+    "laminas/laminas-hydrator": "^3.1.1",
+    "ocramius/generated-hydrator": "^4.1",
     "spiral/database": "^2.8.4"
   },
   "require-dev": {

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Cycle\ORM\Tests;
 
+use CodeGenerationUtils\FileLocator\FileLocator;
+use CodeGenerationUtils\GeneratorStrategy\FileWriterGeneratorStrategy;
 use Cycle\ORM\Collection\Pivoted\PivotedStorage;
 use Cycle\ORM\Config\RelationConfig;
 use Cycle\ORM\Factory;
 use Cycle\ORM\Heap\Node;
+use Cycle\ORM\Mapper\Hydrator\Configuration;
 use Cycle\ORM\ORM;
 use Cycle\ORM\ORMInterface;
 use Cycle\ORM\Reference\ReferenceInterface;
@@ -17,6 +20,7 @@ use Cycle\ORM\Tests\Fixtures\TestLogger;
 use Cycle\ORM\Transaction;
 use Doctrine\Common\Collections\Collection;
 use PHPUnit\Framework\TestCase;
+use Spiral\Core\Container;
 use Spiral\Database\Config\DatabaseConfig;
 use Spiral\Database\Database;
 use Spiral\Database\DatabaseManager;
@@ -89,7 +93,8 @@ abstract class BaseTest extends TestCase
         $this->orm = new ORM(
             new Factory(
                 $this->dbal,
-                RelationConfig::getDefault()
+                RelationConfig::getDefault(),
+                $this->getContainer()
             )
         );
     }
@@ -196,6 +201,23 @@ abstract class BaseTest extends TestCase
                 "Number of read SQL queries do not match, expected {$numReads} got {$queries}."
             );
         }
+    }
+
+    protected function getContainer(): Container
+    {
+        $container = new Container();
+
+        $container->bindSingleton(Configuration::class, function () {
+            $config = new Configuration();
+            $config->setGeneratedClassesTargetDir(__DIR__ . '/../../runtime');
+            $config->setGeneratorStrategy(new FileWriterGeneratorStrategy(
+                new FileLocator($config->getGeneratedClassesTargetDir())
+            ));
+
+            return $config;
+        });
+
+        return $container;
     }
 
     /**

@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Cycle\ORM\Mapper\Proxy;
 
 use Closure;
+use Cycle\ORM\Mapper\HydratorFactory;
 use Cycle\ORM\ORMInterface;
 use Cycle\ORM\RelationMap;
 use Doctrine\Instantiator\Instantiator;
-use Laminas\Hydrator\HydratorInterface;
-use Laminas\Hydrator\ReflectionHydrator;
 
 class ProxyEntityFactory
 {
@@ -21,18 +20,19 @@ class ProxyEntityFactory
     private array $classScope = [];
     private Instantiator $instantiator;
     private Closure $initializer;
-    private HydratorInterface $hydrator;
+    private HydratorFactory $hydratorFactory;
+    private array $hydratorCache = [];
 
-    public function __construct()
+    public function __construct(HydratorFactory $hydratorFactory, Instantiator $instantiator)
     {
-        $this->instantiator = new Instantiator();
+        $this->instantiator = $instantiator;
         $this->initializer = static function (object $self, array $properties): void {
             foreach ($properties as $name) {
                 unset($self->$name);
             }
         };
 
-        $this->hydrator = new ReflectionHydrator();
+        $this->hydratorFactory = $hydratorFactory;
     }
 
     /**
@@ -43,7 +43,8 @@ class ProxyEntityFactory
         string $role,
         array $data,
         string $sourceClass
-    ): object {
+    ): object
+    {
         $relMap = $orm->getRelationMap($role);
         $class = array_key_exists($sourceClass, $this->classMap)
             ? $this->classMap[$sourceClass]
@@ -66,9 +67,14 @@ class ProxyEntityFactory
         string $role,
         object $entity,
         array $data
-    ): object {
+    ): object
+    {
+        $class = get_class($entity);
+
+        $hydrator = $this->hydratorCache[$class] ??= $this->hydratorFactory->create($class);
+
         // new set of data and relations always overwrite entity state
-        return $this->hydrator->hydrate($data, $entity);
+        return $hydrator->hydrate($data, $entity);
     }
 
     public function extractRelations(RelationMap $relMap, object $entity): array
