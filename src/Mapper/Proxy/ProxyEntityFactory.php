@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Cycle\ORM\Mapper\Proxy;
 
 use Closure;
+use Cycle\ORM\Mapper\Hydrator\ClassPropertiesExtractor;
+use Cycle\ORM\Mapper\Hydrator\ClosureHydrator;
 use Cycle\ORM\ORMInterface;
 use Cycle\ORM\RelationMap;
 use Doctrine\Instantiator\Instantiator;
-use Laminas\Hydrator\HydratorInterface;
-use Laminas\Hydrator\ReflectionHydrator;
 
 class ProxyEntityFactory
 {
@@ -19,11 +19,13 @@ class ProxyEntityFactory
      */
     private array $classMap = [];
     private array $classScope = [];
+    private array $classProperties = [];
     private Instantiator $instantiator;
     private Closure $initializer;
-    private HydratorInterface $hydrator;
+    private ClosureHydrator $hydrator;
+    private ClassPropertiesExtractor $propertiesExtractor;
 
-    public function __construct()
+    public function __construct(ClosureHydrator $hydrator, ClassPropertiesExtractor $propertiesExtractor)
     {
         $this->instantiator = new Instantiator();
         $this->initializer = static function (object $self, array $properties): void {
@@ -32,7 +34,8 @@ class ProxyEntityFactory
             }
         };
 
-        $this->hydrator = new ReflectionHydrator();
+        $this->hydrator = $hydrator;
+        $this->propertiesExtractor = $propertiesExtractor;
     }
 
     /**
@@ -43,7 +46,8 @@ class ProxyEntityFactory
         string $role,
         array $data,
         string $sourceClass
-    ): object {
+    ): object
+    {
         $relMap = $orm->getRelationMap($role);
         $class = array_key_exists($sourceClass, $this->classMap)
             ? $this->classMap[$sourceClass]
@@ -66,9 +70,16 @@ class ProxyEntityFactory
         string $role,
         object $entity,
         array $data
-    ): object {
+    ): object
+    {
+        $properties = $this->classProperties[get_class($entity)] ??= $this->propertiesExtractor->extract($entity);
+
         // new set of data and relations always overwrite entity state
-        return $this->hydrator->hydrate($data, $entity);
+        return $this->hydrator->hydrate(
+            $properties,
+            $entity,
+            $data
+        );
     }
 
     public function extractRelations(RelationMap $relMap, object $entity): array
